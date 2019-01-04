@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+
+body='{}'
+path='/_count'
+pretty=false
+
+printUsage() {
+    if [[ $# -eq 0 ]] || [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]
+    then
+        printf "\nUsage: es-curl [options...] \
+        \n   -v, --verb   HTTP verb (GET, POST, PUT, HEAD, DELETE)    Default: GET\
+        \n   -u, --url    Elastic search server url   Default: http://localhost:9200 \
+        \n   -p, --path   Elastic search endpoint path    Default: /_count \
+        \n   -b, --body   The file path that contains the JSON encoded request body   Default: {} \
+        \n   --pretty     print JSON result in pretty format (This can also achieve via path parameter '/<path>?pretty') \
+        \n"
+        exit 1;
+    fi
+}
+
+readBody() {
+    if [[ ! -z "$bodyFilePath" ]]
+    then
+        body=`cat $bodyFilePath`
+    fi
+    
+    printf "\nquery body: $body\n"
+    body=$(echo $body | tr -d '\n')
+}
+
+amendPath() {
+    if [[ ${path:0:1} != '/' ]]; then path="/$path"; fi
+    if [[ $pretty == true ]]; then path="$path?pretty"; fi
+
+    printf  "query path: $path\n\n"
+}
+
+main() {
+    url='http://localhost:9200'
+    verb='GET'
+
+    while [[ $# -gt 0 ]] 
+        do
+            key="$1"
+            case $key in
+                -v|--verb)
+                verb="$2"
+                shift
+                shift
+                ;;
+                -u|--url)
+                url="$2"
+                shift
+                shift
+                ;;
+                -p|--path)
+                path="$2"
+                shift
+                shift
+                ;;
+                -b|--body)
+                bodyFilePath="$2"
+                shift
+                shift
+                ;;
+                --pretty)
+                pretty=true
+                shift
+                shift
+                ;;
+                *)
+                printf "\n[Error] Unknown argument: $1 $2\n\n"
+                exit 1
+                ;;
+        esac
+    done
+    
+    readBody
+    amendPath 
+    
+    curl -i -v -X $verb $url$path -H 'Content-Type:application/json' -d "$body"
+    printf "\n\nDone\n\n"
+}
+
+printUsage "$@"
+main "$@"
